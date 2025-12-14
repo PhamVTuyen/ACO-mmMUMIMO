@@ -1,0 +1,52 @@
+class BeamAssignmentMMAS:
+    def __init__(self, n_ants=10, alpha=1.0, beta=2.0, rho=0.02, Q=100, max_iter=50):
+        self.n_ants = n_ants
+        self.alpha = alpha
+        self.beta = beta
+        self.rho = rho
+        self.Q = Q
+        self.max_iter = max_iter
+        self.tau_max = None
+        self.tau_min = None
+    
+    def solve(self, gain_matrix):
+        U, B = gain_matrix.shape
+        
+        
+        initial_gain = self.greedy_initialization(gain_matrix)
+        self.tau_max = 1.0 / (self.rho * initial_gain)
+        self.tau_min = self.tau_max / (2 * U)
+        
+        
+        tau = np.ones((U, B)) * self.tau_max
+        eta = gain_matrix / np.max(gain_matrix)
+        
+        best_assignment = None
+        best_total_gain = -float('inf')
+        
+        for iteration in range(self.max_iter):
+            iteration_best_gain = -float('inf')
+            iteration_best_assignment = None
+            
+            for ant in range(self.n_ants):
+                assignment, total_gain = self.construct_solution(gain_matrix, tau, eta)
+                
+                if total_gain > iteration_best_gain:
+                    iteration_best_gain = total_gain
+                    iteration_best_assignment = assignment
+                
+                if total_gain > best_total_gain:
+                    best_total_gain = total_gain
+                    best_assignment = assignment.copy()
+            
+           
+            tau = (1 - self.rho) * tau
+            if iteration_best_assignment:
+                delta_tau = self.Q * iteration_best_gain
+                for user, beam in iteration_best_assignment.items():
+                    tau[user, beam] += delta_tau
+            
+            
+            tau = np.clip(tau, self.tau_min, self.tau_max)
+        
+        return best_assignment, best_total_gain

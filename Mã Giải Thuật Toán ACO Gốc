@@ -1,0 +1,67 @@
+import numpy as np
+
+class AntSystem:
+    def __init__(self, n_ants=10, alpha=1.0, beta=2.0, rho=0.5, Q=100, max_iter=100):
+        self.n_ants = n_ants
+        self.alpha = alpha      
+        self.beta = beta       
+        self.rho = rho         
+        self.Q = Q              
+        self.max_iter = max_iter
+        
+    def solve(self, distance_matrix):
+        n = distance_matrix.shape[0]
+        tau = np.ones((n, n)) * 0.1
+        eta = 1.0 / (distance_matrix + np.eye(n))
+        
+        best_path = None
+        best_cost = float('inf')
+        
+        for iteration in range(self.max_iter):
+            all_paths = []
+            all_costs = []
+            
+            for ant in range(self.n_ants):
+                current_city = np.random.randint(n)
+                visited = [current_city]
+                path_cost = 0
+                
+                while len(visited) < n:
+                    current = visited[-1]
+                    unvisited = [i for i in range(n) if i not in visited]
+                    
+                    if not unvisited:
+                        break
+                    
+                    probabilities = []
+                    for city in unvisited:
+                        tau_val = tau[current, city] ** self.alpha
+                        eta_val = eta[current, city] ** self.beta
+                        probabilities.append(tau_val * eta_val)
+                    
+                    probabilities = np.array(probabilities)
+                    probabilities = probabilities / probabilities.sum()
+                    next_city = np.random.choice(unvisited, p=probabilities)
+                    path_cost += distance_matrix[current, next_city]
+                    visited.append(next_city)
+                
+                path_cost += distance_matrix[visited[-1], visited[0]]
+                visited.append(visited[0])
+                all_paths.append(visited)
+                all_costs.append(path_cost)
+                
+                if path_cost < best_cost:
+                    best_cost = path_cost
+                    best_path = visited.copy()
+            
+            tau = (1 - self.rho) * tau
+            for path, cost in zip(all_paths, all_costs):
+                delta_tau = self.Q / cost
+                for i in range(len(path)-1):
+                    tau[path[i], path[i+1]] += delta_tau
+                    tau[path[i+1], path[i]] += delta_tau
+            
+            if iteration % 10 == 0:
+                print(f"Iteration {iteration}: Best cost = {best_cost}")
+        
+        return best_path, best_cost
