@@ -1,0 +1,54 @@
+class BeamAssignmentACO:
+    def __init__(self, n_ants=10, alpha=1.0, beta=2.0, rho=0.3, Q=100, max_iter=50):
+        self.n_ants = n_ants
+        self.alpha = alpha
+        self.beta = beta
+        self.rho = rho
+        self.Q = Q
+        self.max_iter = max_iter
+    
+    def solve(self, gain_matrix):
+        U, B = gain_matrix.shape
+        
+        tau = np.ones((U, B)) * 0.1
+        eta = gain_matrix / np.max(gain_matrix)  
+        
+        best_assignment = None
+        best_total_gain = -float('inf')
+        
+        for iteration in range(self.max_iter):
+            for ant in range(self.n_ants):
+                assignment = {}
+                used_beams = set()
+                total_gain = 0
+                
+                for user in range(U):
+                    available_beams = [b for b in range(B) if b not in used_beams]
+                    
+                    if available_beams:
+                    
+                        probabilities = []
+                        for beam in available_beams:
+                            prob = (tau[user, beam] ** self.alpha) * \
+                                   (eta[user, beam] ** self.beta)
+                            probabilities.append(prob)
+                        
+                      
+                        if sum(probabilities) > 0:
+                            probabilities = probabilities / sum(probabilities)
+                            chosen_beam = np.random.choice(available_beams, p=probabilities)
+                        else:
+                            chosen_beam = np.random.choice(available_beams)
+                        
+                        assignment[user] = chosen_beam
+                        used_beams.add(chosen_beam)
+                        total_gain += gain_matrix[user, chosen_beam]
+                
+                if total_gain > best_total_gain:
+                    best_total_gain = total_gain
+                    best_assignment = assignment.copy()
+            
+           
+            tau = (1 - self.rho) * tau
+            
+        return best_assignment, best_total_gain
